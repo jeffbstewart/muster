@@ -1,0 +1,5 @@
+# Keep the build context lean.
+.git/
+examples/
+*.exe
+*.test

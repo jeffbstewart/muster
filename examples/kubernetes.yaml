@@ -1,0 +1,90 @@
+# Minimal complete muster deployment.  Adjust the namespace, the
+# manifest contents, and -drift-namespaces to taste.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: muster
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: muster
+rules:
+  # Node image lists; pods only if you enable drift detection.
+  - apiGroups: [""]
+    resources: [nodes, pods]
+    verbs: [get, list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: muster
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: muster
+subjects:
+  - kind: ServiceAccount
+    name: muster
+    namespace: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: muster-manifest
+  namespace: monitoring
+data:
+  manifest.txt: |
+    # The images this cluster must hold on every node.
+    registry.k8s.io/pause:3.10.1
+    # your-registry/your-critical-image:tag@sha256:...
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: muster
+  namespace: monitoring
+  labels:
+    app: muster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: muster
+  template:
+    metadata:
+      labels:
+        app: muster
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9909"
+    spec:
+      serviceAccountName: muster
+      containers:
+        - name: muster
+          image: ghcr.io/jeffbstewart/muster:main
+          args:
+            - -manifest=/manifest/manifest.txt
+            - -drift-namespaces=kube-system
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          ports:
+            - name: http
+              containerPort: 9909
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9909
+            initialDelaySeconds: 5
+          volumeMounts:
+            - name: manifest
+              mountPath: /manifest
+              readOnly: true
+      volumes:
+        - name: manifest
+          configMap:
+            name: muster-manifest
