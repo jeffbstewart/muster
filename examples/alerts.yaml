@@ -1,0 +1,47 @@
+# Starter Prometheus rules for muster.  Tune severities and windows
+# to your paging culture.
+groups:
+  - name: muster
+    rules:
+      - alert: MusterImageAbsent
+        # A manifested image is not in this node's reported cache: a
+        # registry-less (re)boot would strand whatever needs it.
+        # Check the kubelet truncation trap (README) before trusting a
+        # small-image absence on a node near its report cap.
+        expr: muster_absent_count > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "node {{ $labels.node }} is missing {{ $value }} manifested image(s)"
+          description: >-
+            muster_absent{node="{{ $labels.node }}"} names them.
+            Re-run your pre-pull mechanism, then investigate why the
+            image left the cache (kubelet image GC under disk
+            pressure is the usual suspect).
+
+      - alert: MusterManifestDrift
+        # Something is RUNNING that the manifest does not list --
+        # usually a cluster upgrade swapped a system image and the
+        # ledger was not updated.
+        expr: muster_unlisted_count > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} running image(s) in {{ $labels.namespace }} are not in the manifest"
+          description: >-
+            muster_unlisted{namespace="{{ $labels.namespace }}"} names
+            them.  Add them to the manifest (and your pre-pull set) or
+            explain why they are exempt.
+
+      - alert: MusterReconcileFailing
+        expr: muster_reconcile_success == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "muster cannot complete a reconcile pass"
+          description: >-
+            The inventory is blind.  Check muster's logs -- API
+            permissions and the manifest path are the usual suspects.
