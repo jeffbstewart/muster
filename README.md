@@ -32,8 +32,8 @@ One image reference per line; `#` comments and blank lines ignored.
 
 ```
 # LAN core
-docker.io/coredns/coredns:1.14.6@sha256:900f9c10...
-quay.io/metallb/speaker:v0.16.0
+docker.io/coredns/coredns:1.12.0@sha256:0123abcd...
+quay.io/metallb/speaker:v0.14.0
 ```
 
 Matching semantics:
