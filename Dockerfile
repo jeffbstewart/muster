@@ -9,7 +9,7 @@
 #
 # The builder is pinned by digest (golang:1.26.10): it controls the output
 # binary, so pin it like a dependency.
-FROM golang:1.26.10@sha256:672c944cfd07599b5f1bb179869270cdc94c6254e41db4d431259693cb286b82 AS build
+FROM golang:1.26.11@sha256:6327cb290853a5d13091c436b88259b4f35ff70e49b1f8d9e5d1dd1757e9c6ba AS build
 WORKDIR /src
 COPY go.mod ./
 COPY cmd ./cmd
